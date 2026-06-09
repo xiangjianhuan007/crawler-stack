@@ -1,0 +1,7 @@
+# 仓库赞助按钮配置
+# 支持的平台：github sponsors / patreon / ko_fi / custom url 等
+# 详细文档：https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+github: xianjianhuang
+ko_fi: cloakhq
+custom: ["https://ko-fi.com/cloakhq"]
