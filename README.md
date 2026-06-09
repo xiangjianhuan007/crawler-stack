@@ -21,13 +21,14 @@
 
 | 💥 硬核能力 | 说明 |
 |------------|------|
-| **八层降级** | L0 → L1 → L1.1 → L1.5 → L2 → L2.5 → L3 → L3.5 → L4，层层递进，永不放弃 |
-| **源码级反检测** | L3.5 CloakBrowser — 58 个 Chromium C++ 源码补丁，不是 JS 打补丁的玩具 |
-| **reCAPTCHA v3 得分 0.9** | 人类级别，不是 0.1 的 bot 分数 |
-| **Cloudflare 全系列通杀** | v1/v2/v3 JS VM + Turnstile，管你什么挑战模式 |
-| **腾讯天御 Aegis 绕过** | 国内最大反爬系统之一，实测通过 |
-| **Edge 用户数据复用** | 自带微信/各平台登录态，不用重复扫码 |
-| **SPA 单页应用增强** | hash 路由注入、API 拦截、等待渲染，SPA 无所遁形 |
+| **八层降级** | L0 → L1 → L1.1 → L1.5 → L2 → L2.5 → L3 → L3.5 → L4，层层递进，遇强则强，不拿到内容誓不罢休 |
+| **源码级反检测** | L3.5 CloakBrowser — 58 个 Chromium C++ 源码补丁，直接修改浏览器内核，JS 打补丁的玩具们可以退休了 |
+| **reCAPTCHA v3 得分 0.9** | 人类级别 0.9，不是 0.1 的 bot 分数。Google 自己都分不清你是人是鬼 |
+| **Cloudflare 全系列通杀** | v1/v2/v3 JS VM + Turnstile，管你什么挑战模式，来一个破一个 |
+| **腾讯天御 Aegis 绕过** | 国际最大反爬系统之一，实测正面硬刚通过 |
+| **Edge 用户数据复用** | 直接加载 Chrome/Edge 完整用户数据目录，微信/论坛/各平台登录态全部继承，无需二次认证 |
+| **SPA 单页应用增强** | hash 路由注入、XHR/fetch API 拦截、动态等待渲染，SPA 在你面前就是静态页面 |
+| **CDP 远程调试** | 直接挂载已登录的浏览器窗口，所见即所得，cookie/session 全部白嫖 |
 
 ## 🏗️ 架构总览
 
@@ -52,16 +53,16 @@ fetch(url)
 
 | 场景 | 普通爬虫 | **Crawler Stack** |
 |------|---------|-------------------|
-| 普通网站 | ✅ 正常 | ✅ **L1 0.3s** |
-| Cloudflare v1 挑战 | ❌ 403 | ✅ **L1 0.5s** |
-| Cloudflare v3 JS VM | ❌ 403 | ✅ **L1.1 5s** |
-| Cloudflare Turnstile | ❌ 卡住 | ✅ **L1.1 自动过** |
-| 腾讯天御 Aegis | ❌ 空 body | ✅ **L2 3s** |
-| reCAPTCHA v3 | ❌ 0.1 bot | ✅ **L3.5 0.9 human** |
-| FingerprintJS | ❌ 被拦截 | ✅ **L3.5 全通过** |
-| BrowserScan | ❌ 被检测 | ✅ **L3.5 NORMAL** |
-| SPA 单页应用 | ❌ 白页 | ✅ **L4 渲染完成** |
-| 微信扫码登录页 | ❌ 无法处理 | ✅ **L1.5 复用登录态** |
+| 普通网站 | ✅ 正常 | ✅ **L1 0.3s 秒杀** |
+| Cloudflare v1 挑战 | ❌ 403 回家 | ✅ **L1 0.5s 碾压** |
+| Cloudflare v3 JS VM | ❌ 403 没商量 | ✅ **L1.1 5s 破解** |
+| Cloudflare Turnstile | ❌ 卡死 | ✅ **L1.1 自动过，无需交互** |
+| 腾讯天御 Aegis | ❌ 空 body 怀疑人生 | ✅ **L2 3s 正面突破** |
+| reCAPTCHA v3 | ❌ 0.1 bot 被当机器人 | ✅ **L3.5 0.9 人类认证** |
+| FingerprintJS | ❌ 被拦截封号 | ✅ **L3.5 全通过，指纹归零** |
+| BrowserScan | ❌ 被检测现形 | ✅ **L3.5 NORMAL，完美伪装** |
+| SPA 单页应用 | ❌ 白页啥也没有 | ✅ **L4 渲染完成，源码尽收眼底** |
+| 微信扫码登录页 | ❌ 无法处理 | ✅ **L1.5 复用登录态，无需扫码** |
 
 ## 🎯 快速开始
 
@@ -119,25 +120,25 @@ print(result.video_urls)  # 自动拦截 m3u8/mp4 地址
 
 ### 已攻破的站点
 
-| 站点 | 防护等级 | 攻破层级 | 耗时 |
-|------|---------|---------|------|
-| **69shuba.tw** | 🟠 腾讯天御 Aegis + Cloudflare | L2 DrissionPage | ~3s |
-| **mp.weixin.qq.com** | 🟠 腾讯天御 Aegis | L2 DrissionPage | ~3s |
-| **色花堂** | 🟡 年龄确认页 + Discuz! | L2 自动点击确认 | ~5s |
-| **browserscan.net** | 🔴 深度浏览器指纹检测 | L3.5 CloakBrowser (NORMAL) | ~8s |
-| **deviceandbrowserinfo.com** | 🔴 行为检测 24 项 | L3.5 CloakBrowser (0 true flags) | ~8s |
-| **cloudflarestatus.com** | 🟡 Cloudflare CDN | L1 curl_cffi | ~0.3s |
+| 站点 | 防护等级 | 攻破层级 | 耗时 | 备注 |
+|------|---------|---------|------|------|
+| **69shuba.tw** | 🔴 腾讯天御 Aegis + Cloudflare 双重防护 | L2 DrissionPage 正面突破 | ~3s | 国内最硬的反爬组合之一，直接拿下 |
+| **mp.weixin.qq.com** | 🔴 腾讯天御 Aegis 企业级防护 | L2 DrissionPage 轻松绕过 | ~3s | 微信公众平台防护，形同虚设 |
+| **色花堂** | 🟠 年龄确认页 + Discuz! 论坛防护 | L2 自动点击确认秒过 | ~5s | 成人站点年龄验证，一键破防 |
+| **browserscan.net** | 🔴 深度浏览器指纹检测（24 项指标） | L3.5 CloakBrowser 满分通过（NORMAL） | ~8s | 指纹检测界的照妖镜，完美伪装 |
+| **deviceandbrowserinfo.com** | 🔴 行为检测 24 项全面扫描 | L3.5 CloakBrowser（0 true flags 满分） | ~8s | 行为检测全部归零，你就是真人 |
+| **cloudflarestatus.com** | 🟡 Cloudflare CDN 基础防护 | L1 curl_cffi 秒杀 | ~0.3s | 热身级别的 |
 
 ### 检测分数（越高越好）
 
-| 检测服务 | 普通 Playwright | **Crawler Stack** |
-|---------|----------------|-------------------|
-| reCAPTCHA v3 | 0.1 🤖 | **0.9 🧑** |
-| Cloudflare Turnstile | ❌ 失败 | ✅ **通过** |
-| FingerprintJS | ❌ 被拦截 | ✅ **通过** |
-| `navigator.webdriver` | `true` | **`false`** |
-| TLS 指纹 | 不匹配 | **与 Chrome 完全一致** |
-| CDP 检测 | 被检测 | **未被检测** |
+| 检测服务 | 普通 Playwright | **Crawler Stack** | 说明 |
+|---------|----------------|-------------------|------|
+| reCAPTCHA v3 | 0.1 🤖 妥妥的机器人 | **0.9 🧑 Google 都信了** | 从 bot 到人类的跨越 |
+| Cloudflare Turnstile | ❌ 失败被拦 | ✅ **自动通过** | 连验证码都不用点 |
+| FingerprintJS | ❌ 被拦截封号 | ✅ **完美通过** | 指纹检测形同虚设 |
+| `navigator.webdriver` | `true` 直接暴露 | **`false` 完美隐藏** | 最基础的检测都过不了？不存在的 |
+| TLS 指纹 | 不匹配被识别 | **与 Chrome 完全一致** | 网络层伪装到牙齿 |
+| CDP 检测 | 被检测自动化 | **未被检测，你就是普通用户** | Chrome DevTools 协议痕迹全部消除 |
 
 ---
 

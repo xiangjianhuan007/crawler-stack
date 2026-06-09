@@ -20,13 +20,14 @@
 
 | Feature | Description |
 |---------|-------------|
-| **8-Layer Auto-Degrade** | L0 → L1 → L1.1 → L1.5 → L2 → L2.5 → L3 → L3.5 → L4, never give up |
-| **C++ Source-Level Anti-Detection** | L3.5 CloakBrowser — 58 Chromium C++ patches, not JS monkey-patching |
-| **reCAPTCHA v3 Score 0.9** | Human-level, not 0.1 bot score |
-| **Full Cloudflare Coverage** | v1/v2/v3 JS VM + Turnstile, all challenge types |
-| **Tencent Aegis Bypass** | Verified against China's #1 anti-bot system |
-| **Edge User Data Reuse** | Carry all login sessions (WeChat, forums, etc.) |
-| **SPA Enhancement** | Hash route injection, API interception, render waiting |
+| **8-Layer Auto-Degrade** | L0 → L1 → L1.1 → L1.5 → L2 → L2.5 → L3 → L3.5 → L4, each layer a fortress. Falls back until content is yours |
+| **C++ Source-Level Anti-Detection** | L3.5 CloakBrowser — 58 Chromium C++ patches modifying the browser engine at compile time. JS monkey-patching? That's for amateurs |
+| **reCAPTCHA v3 Score 0.9** | Human-level 0.9 — Google itself can't tell you're not a person |
+| **Full Cloudflare Coverage** | v1/v2/v3 JS VM + Turnstile — bring it on, we break them all |
+| **Tencent Aegis Bypass** | One of the world's toughest anti-bot systems, crushed in production |
+| **Edge/Chrome User Data Hijack** | Load the entire browser profile — all login sessions (WeChat, forums, SaaS) inherited. Zero re-authentication |
+| **SPA Rendering Domination** | Hash route injection, XHR/fetch interception, dynamic render waiting. SPAs are just static HTML to us |
+| **CDP Remote Hijack** | Mount a live authenticated browser window. What you see is what you get — cookies, sessions, the works |
 
 ## 🏗️ Architecture
 
@@ -47,13 +48,15 @@ fetch(url)
 
 | Scenario | Ordinary Crawler | **Crawler Stack** |
 |----------|----------------|-------------------|
-| Normal sites | ✅ OK | ✅ **L1 0.3s** |
-| Cloudflare v1 challenge | ❌ 403 | ✅ **L1 0.5s** |
-| Cloudflare v3 JS VM | ❌ 403 | ✅ **L1.1 5s** |
-| Cloudflare Turnstile | ❌ Stuck | ✅ **L1.1 auto** |
-| reCAPTCHA v3 | ❌ 0.1 bot | ✅ **L3.5 0.9 human** |
-| FingerprintJS | ❌ Blocked | ✅ **L3.5 passed** |
-| SPA pages | ❌ Blank | ✅ **L4 rendered** |
+| Normal sites | ✅ Works | ✅ **L1 0.3s — overkill** |
+| Cloudflare v1 challenge | ❌ 403 blocked | ✅ **L1 0.5s — crushed** |
+| Cloudflare v3 JS VM | ❌ 403 no chance | ✅ **L1.1 5s — decrypted** |
+| Cloudflare Turnstile | ❌ Stuck forever | ✅ **L1.1 auto-pass, no interaction** |
+| reCAPTCHA v3 | ❌ 0.1 bot detected | ✅ **L3.5 0.9 human certified** |
+| FingerprintJS | ❌ Blocked & banned | ✅ **L3.5 passed, fingerprint zeroed** |
+| BrowserScan | ❌ Detected & exposed | ✅ **L3.5 NORMAL — perfect disguise** |
+| SPA pages | ❌ Blank nothing | ✅ **L4 fully rendered, source captured** |
+| WeChat QR login | ❌ Can't handle | ✅ **L1.5 session hijack, no QR needed** |
 
 ## 🎯 Quick Start
 
