@@ -1,0 +1,20 @@
+# 忽略 Python 缓存
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# 忽略虚拟环境
+venv/
+.venv/
+
+# 忽略系统文件
+.DS_Store
+Thumbs.db
+
+# 忽略 cookie 和配置文件（用户敏感信息）
+*.cookies.txt
+*.cookie
+config.yaml
+.env
