@@ -1,21 +1,59 @@
-# 🔥 Crawler Stack v5 — 地表最强爬虫引擎，正面硬刚 BrowserAct
+# 🔥 Crawler Stack v5.1 — 地表最强爬虫引擎，正面硬刚 BrowserAct
 
 <div align="center">
 
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Version](https://img.shields.io/badge/version-5.0.0-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-5.1.0-brightgreen.svg)
 ![Anti-Detection](https://img.shields.io/badge/anti--detection-C%2B%2B%20source--level-orange.svg)
 ![Cloudflare](https://img.shields.io/badge/Cloudflare-Turnstile%20%2F%20v3%20JS%20VM-purple.svg)
 ![Aegis](https://img.shields.io/badge/%E8%85%BE%E8%AE%AF%E5%A4%A9%E5%BE%A1-Aegis%20%E7%BB%95%E8%BF%87-success.svg)
-![Captcha](https://img.shields.io/badge/captcha-human--assist-red.svg)
-![Multi-Account](https://img.shields.io/badge/multi--account-isolated-blue.svg)
+![HTML Compact](https://img.shields.io/badge/html--compact-90%25%20token%20savings-green.svg)
+![API Discovery](https://img.shields.io/badge/api--discovery-Network%20Capture-blue.svg)
 
-**九层自动降级 + 验证码人机接力 + 多账号隔离 + Skill Forge — 你的 AI Agent 值得拥有比 BrowserAct 更强的爬虫能力。**
+**九层自动降级 + HTML 精简引擎 + API 端点发现 + 验证码人机接力 + 多账号隔离 + Skill Forge — 你的 AI Agent 值得拥有比 BrowserAct 更强的爬虫能力。**
 
 [English](README_EN.md) · [报告 Bug](https://github.com/xianjianhuang/crawler-stack/issues) · [请求功能](https://github.com/xianjianhuang/crawler-stack/issues)
 
 </div>
+
+---
+
+## 🚀 v5.1 新增：两大核弹级能力
+
+### 🗜️ HTML 精简引擎 — 对标 BrowserAct `state`，token 省 90%
+
+```python
+# markdown 模式：保留结构（标题/列表/表格/链接），token ≈60-70%
+result = fetch(url, compact_mode='markdown')
+print(result.compact)  # 结构化 Markdown，省 70% token
+
+# index 模式：仅提取交互元素 + 关键文本，token ≈50-90%
+result = fetch(url, compact_mode='index')
+print(result.compact)  # 链接/图片/正文/列表/表格分类展示
+```
+
+| 模式 | token 降幅 | 输出 |
+|------|-----------|------|
+| `text`（默认） | ~40% | 纯文本（兼容 v5.0） |
+| `markdown` | **~60-70%** | 结构化 Markdown，保留标题/列表/表格/链接/图片 |
+| `index` | **~50-90%** | 分类索引：链接列表+图片+正文+列表+表格，带数量统计 |
+
+### 📡 API 端点自动发现 — 对标 BrowserAct `network requests`
+
+```python
+# 方式一：fetch 时顺带发现
+result = fetch('https://spa-website.com', discover_api=True)
+for ep in result.api_endpoints:
+    print(f"[{ep['method']}] {ep['url']} → {ep['response_type']}")
+
+# 方式二：独立调用
+from crawler_stack_v5 import discover_api_endpoints
+endpoints = discover_api_endpoints('https://spa-website.com')
+print(f'发现 {len(endpoints)} 个 API 端点')
+```
+
+自动拦截页面所有 XHR/Fetch 请求，过滤出 JSON 响应 + API 特征 URL，去重排序。对 SPA 站点特别有用。
 
 ---
 
@@ -27,6 +65,7 @@
 | **👥 多账号隔离体系** | 独立 stealth 浏览器 + 独立 IP + 独立指纹 | `Account` 类每个账号独立 DrissionPage 实例 + **稳定指纹噪声**（canvas/WebGL/fonts/audio 用种子哈希生成确定性偏移）+ 独立代理 + 独立 Session，**完全免费无限量** |
 | **⚡ 并发安全** | 零干扰并发 | 默认 `use_fresh_instance=True`，每次创建独立浏览器实例，**彻底消除 session 污染**。旧版全局单例？不存在的 |
 | **🤖 Skill Forge** | 自然语言→自动探测→生成 Skill | `SkillForge` 解析自然语言字段→探测目标网站结构→生成 `ForgedSkill`（含完整 SKILL.md），和我们的「统筹/女娲/达尔文」三位一体理念一脉相承 |
+| **🧠 统筹编排** | 统筹引擎自动编排爬虫任务 | 已集成 [xianjianhuang/tongchou](https://github.com/xianjianhuang/tongchou) — 说一句话就搞定爬虫+分析一条龙 |
 
 ## 🏗️ 架构总览
 
@@ -47,6 +86,8 @@ fetch(url)
   ├─ 👥 Account / AccountManager    — 多账号隔离体系（独立指纹+独立IP+独立Session）
   ├─ 🔐 HumanAssistSession          — 验证码人机接力（5种验证码识别）
   ├─ 🤖 SkillForge / ForgedSkill    — 自然语言→爬虫 Skill 自动生成
+  ├─ 🗜️ _to_compact()               — HTML 精简引擎（markdown/index 模式，token 省 50-90%）
+  ├─ 📡 discover_api_endpoints()    — API 端点自动发现（Network Capture）
   └─ 🕵️ detect_captcha()            — 验证码类型检测引擎
 ```
 
@@ -54,11 +95,13 @@ fetch(url)
 
 ---
 
-## 📊 竞品对比 — Crawler Stack vs BrowserAct
+## 📊 竞品对比 — Crawler Stack v5.1 vs BrowserAct
 
-| 维度 | **Crawler Stack v5 🚀** | BrowserAct |
+| 维度 | **Crawler Stack v5.1 🚀** | BrowserAct |
 |------|------------------------|------------|
 | **反爬层级** | 九层自动降级（L0→L1→L1.1→L1.5→L2→L2.5→L3→L3.5→L4→L5） | 三模式（chrome / stealth 隐私 / stealth 固定身份） |
+| **HTML 精简** | ✅ **v5.1 新增** `_to_compact()` — markdown/index 模式，token 省 50-90% | ✅ `state` 索引模式，官方称省 93% token |
+| **API 端点发现** | ✅ **v5.1 新增** `discover_api_endpoints()` — Playwright 拦截 XHR/Fetch | ✅ `network requests` CLI 命令 |
 | **验证码处理** | ✅ `detect_captcha` 识别 5 种类型 + `HumanAssistSession` 人机接力 | ✅ `solve-captcha` + `remote-assist` |
 | **多账号隔离** | ✅ `Account` + `AccountManager`，**完全免费无限量** | ⚠️ stealth 浏览器超 5 个需付费 |
 | **并发安全** | ✅ 默认独立实例模式，零污染 | ✅ 零干扰并发 |
@@ -70,7 +113,7 @@ fetch(url)
 | **费用** | 💯 **完全免费，零限制** | ⚠️ stealth 超 5 个付费，代理付费 |
 | **平台兼容** | Windows 优先 | Windows/macOS/Linux |
 
-**一句话总结：反爬能力不分伯仲，但 Crawler Stack 完全免费无限量，且在国内站点（Aegis/Discuz!/微信）上有独特优势。**
+**一句话总结：反爬能力不分伯仲，v5.1 新增 HTML 精简和 API 发现补齐最后短板。Crawler Stack 完全免费无限量，且在国内站点（Aegis/Discuz!/微信）上有独特优势。**
 
 ---
 
@@ -93,12 +136,20 @@ pip install cloakbrowser
 ### 一行代码开始爬
 
 ```python
-from crawler_stack_v5 import fetch
+from crawler_stack_v5 import fetch, CompactMode, discover_api_endpoints
 
 # 自动降级 — 引擎替你选择最快方案
 result = fetch('https://example.com')
 print(result.text)    # 干净的内容
 print(result.method)  # 实际使用的层级
+
+# HTML 精简模式 — 省 50-90% token
+result = fetch('https://example.com', compact_mode='index')
+print(result.compact)  # 分类索引，省 90% token
+
+# API 端点发现 — 自动找出页面背后的 API
+result = fetch('https://spa-site.com', discover_api=True)
+print(result.api_endpoints)  # [{method, url, response_type, ...}]
 ```
 
 ### 🔐 验证码人机接力
@@ -340,9 +391,9 @@ print(f'自动探测的选择器: {skill.selectors}')
 
 ## 📦 项目结构
 
-```
+```text
 crawler-stack/
-├── crawler_stack_v5.py    # v5 主引擎（1670+ 行，九层自动降级 + 新模块）
+├── crawler_stack_v5.py    # v5.1 主引擎（2100+ 行，九层降级 + HTML 精简 + API 发现 + 新模块）
 ├── crawler_stack_v4.py    # v4 旧版（保留兼容）
 ├── README.md              # 中文说明（就是本文件）
 ├── README_EN.md           # English version

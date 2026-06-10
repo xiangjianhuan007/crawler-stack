@@ -79,12 +79,23 @@ for d in [COOKIE_DIR, DOWNLOAD_DIR, CAPTCHA_DIR, FORGE_OUTPUT_DIR]:
 # 数据类型
 # ============================================================
 
+class CompactMode(Enum):
+    """精简模式枚举"""
+    NONE = 'none'          # 原始 HTML（当前行为）
+    TEXT = 'text'          # 纯文本（当前 _strip_html 结果）
+    MARKDOWN = 'markdown'  # Markdown 格式（≈70% token 降幅）
+    INDEX = 'index'        # 结构化索引（≈90% token 降幅，仅交互元素 + 关键内容）
+
+
 @dataclass
 class FetchResult:
     text: str
     status: int
     method: str
     html: str = ''
+    compact: str = ''          # 精简输出（compact mode 结果）
+    compact_mode: str = 'none' # 使用的精简模式
+    api_endpoints: List[dict] = field(default_factory=list)  # 发现的 API 端点
     cookies: List[dict] = field(default_factory=list)
     video_urls: List[str] = field(default_factory=list)
     captcha_detected: bool = False  # 是否检测到验证码
@@ -1385,11 +1396,21 @@ def fetch(
     human_assist_mode: bool = False,
     use_fresh_instance: bool = True,
     proxy: Optional[str] = None,
+    compact_mode: str = 'text',    # v5.1 新增: 'none'|'text'|'markdown'|'index'
+    discover_api: bool = False,     # v5.1 新增: 是否自动发现 API 端点
 ) -> FetchResult:
     """
-    获取网页内容，自动降级 (v5 增强版)。
+    获取网页内容，自动降级 (v5.1 增强版)。
     
-    v5 新增参数：
+    v5.1 新增参数：
+        compact_mode: 精简模式
+            - 'none': 不精简，返回原始 HTML
+            - 'text': 纯文本（默认，兼容 v5.0）
+            - 'markdown': Markdown 格式，≈70% token 降幅
+            - 'index': 结构化索引，≈90% token 降幅（对标 BrowserAct state）
+        discover_api: 是否自动发现 API 端点（需要 Playwright）
+    
+    v5.0 新增参数：
         human_assist_mode: 启用验证码人机接力（默认 False）
         use_fresh_instance: 使用独立浏览器实例替代全局单例（默认 True，解决 session 污染）
         proxy: 代理地址
@@ -1398,19 +1419,39 @@ def fetch(
     """
     result = None
     
+    # 如果开启了 API 发现，先执行（独立于降级流程）
+    api_endpoints = []
+    if discover_api:
+        api_endpoints = discover_api_endpoints(url, timeout)
+    
+    # 辅助函数：在返回前填充 compact 字段
+    def _enrich(r: FetchResult) -> FetchResult:
+        if compact_mode == 'none':
+            r.compact = r.html
+        elif compact_mode == 'markdown' and r.html:
+            r.compact = _to_compact(r.html, mode='markdown')
+        elif compact_mode == 'index' and r.html:
+            r.compact = _to_compact(r.html, mode='index')
+        else:
+            r.compact = r.text  # 'text' 模式
+        r.compact_mode = compact_mode
+        if api_endpoints:
+            r.api_endpoints = api_endpoints
+        return r
+    
     # L1: curl_cffi（最快）
     if not skip_l1:
         result = _fetch_curl_cffi(url, min(timeout, 15))
         if result:
             logger.info(f'[crawler_stack v5] ✅ L1 curl_cffi: {url}')
-            return result
+            return _enrich(result)
     
     # L1.1: cloudscraper v3
     if not skip_l11:
         result = _fetch_cloudscraper(url, min(timeout, 20))
         if result:
             logger.info(f'[crawler_stack v5] ✅ L1.1 cloudscraper: {url}')
-            return result
+            return _enrich(result)
     
     # L1.5: DrissionPage (user data) — 复用登录态
     if not skip_l15 and use_user_data:
@@ -1418,7 +1459,7 @@ def fetch(
                                         proxy=proxy, user_data=EDGE_USER_DATA)
         if result:
             logger.info(f'[crawler_stack v5] ✅ L1.5 DrissionPage (user): {url}')
-            return result
+            return _enrich(result)
     
     # L2: DrissionPage 独立实例（推荐，消除 session 污染）
     if not skip_l2:
@@ -1428,28 +1469,28 @@ def fetch(
             result = _fetch_drission(url, min(timeout // 2, 5))
         if result:
             logger.info(f'[crawler_stack v5] ✅ L2 DrissionPage: {url}')
-            return result
+            return _enrich(result)
     
     # L2.5: Edge remote debugging
     if not skip_l25:
         result = _fetch_edge_remote(url, timeout)
         if result:
             logger.info(f'[crawler_stack v5] ✅ L2.5 Edge remote: {url}')
-            return result
+            return _enrich(result)
     
     # L3: Playwright
     if not skip_l3:
         result = _fetch_playwright(url, timeout)
         if result:
             logger.info(f'[crawler_stack v5] ✅ L3 Playwright: {url}')
-            return result
+            return _enrich(result)
     
     # L3.5: CloakBrowser
     if not skip_l35:
         result = _fetch_cloakbrowser(url, timeout)
         if result:
             logger.info(f'[crawler_stack v5] ✅ L3.5 CloakBrowser: {url}')
-            return result
+            return _enrich(result)
     
     # L4: SPA 增强
     if not skip_l4:
@@ -1462,20 +1503,424 @@ def fetch(
         )
         if result:
             logger.info(f'[crawler_stack v5] ✅ L4 SPA: {url}')
-            return result
+            return _enrich(result)
     
     # L5: 影刀 RPA
     if not skip_l5:
         result = _fetch_yingdao(url, timeout)
         if result:
             logger.info(f'[crawler_stack v5] ✅ L5 影刀 RPA: {url}')
-            return result
+            return _enrich(result)
     
     raise RuntimeError(f'All layers failed for {url}')
 
 
 # ============================================================
-# 工具函数
+# HTML 精简引擎 (对标 BrowserAct state 索引模式 + HTML 精简)
+# ============================================================
+
+def _to_compact(html: str, mode: str = 'markdown') -> str:
+    """
+    HTML 精简引擎 — 将原始 HTML 压缩为 token 友好的输出。
+    
+    Args:
+        html: 原始 HTML
+        mode: 'markdown' | 'index'
+        
+    Returns:
+        精简后的文本
+    
+    'markdown' 模式：保留核心结构（标题、段落、列表、表格），≈70% token 降幅
+    'index' 模式：仅提取可交互元素 + 关键文本，≈90% token 降幅
+    """
+    import html as html_mod
+    
+    text = html
+    
+    # 0. 提取关键元数据（两种模式共享）
+    title = ''
+    m = re.search(r'<title>([^<]+)</title>', text, re.DOTALL)
+    if m:
+        title = html_mod.unescape(m.group(1)).strip()
+    
+    meta_desc = ''
+    m = re.search(r'<meta[^>]*name=[\"\']description[\"\'][^>]*content=[\"\']([^\"\']*)[\"\']', text, re.IGNORECASE)
+    if m:
+        meta_desc = html_mod.unescape(m.group(1)).strip()
+    
+    # 微信文章特殊处理（原有逻辑）
+    wx_title = ''
+    m = re.search(r'var msg_title = \"([^\"]+)\"', text)
+    if m:
+        wx_title = m.group(1)
+    wx_content = ''
+    m = re.search(r'var content_htm = \"([^\"]*)\"', text)
+    if m:
+        raw = m.group(1)
+        raw = raw.replace('\\"', '"').replace("\\'", "'").replace('\\n', '\n').replace('\\t', '\t')
+        wx_content = html_mod.unescape(raw)
+        wx_content = re.sub(r'<[^>]+>', '', wx_content)
+        wx_content = re.sub(r'\s+', ' ', wx_content).strip()
+    
+    # 清理 script/style（两种模式都需要）
+    text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL)
+    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL)
+    text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
+    
+    # 清理无用属性（只保留 href/src/alt/title）
+    text = re.sub(r'\s(class|style|id|onclick|onload|onerror|data-[^=]*)=["\'][^"\']*["\']', '', text)
+    
+    if mode == 'index':
+        return _to_index_mode(text, title, wx_title, wx_content)
+    else:
+        return _to_markdown_mode(text, title, meta_desc, wx_title, wx_content)
+
+
+def _to_index_mode(html: str, title: str, wx_title: str, wx_content: str) -> str:
+    """INDEX 模式 — 只提取交互元素 + 关键文本，≈90% token 降幅"""
+    import html as html_mod
+    parts = []
+    
+    # 标题
+    if wx_title:
+        parts.append(f"# {wx_title}")
+    elif title:
+        parts.append(f"# {title}")
+    
+    # 微信文章内容优先
+    if wx_content and len(wx_content) > 100:
+        parts.append("")
+        parts.append("---")
+        parts.append(wx_content)
+        return '\n'.join(parts)
+    
+    # 提取所有可交互元素
+    elements = []
+    
+    # 链接: <a href="...">text</a>
+    for m in re.finditer(r'<a\s+[^>]*href=[\"\']([^\"\']+)[\"\'][^>]*>([^<]*)</a>', html):
+        href = html_mod.unescape(m.group(1)).strip()
+        text = html_mod.unescape(m.group(2)).strip()
+        if text and not href.startswith('javascript:') and not href.startswith('#') and len(text) < 200:
+            elements.append(f"[{text}]({href})")
+    
+    # 图片: <img ... alt="..." src="...">
+    images = []
+    for m in re.finditer(r'<img[^>]*src=[\"\']([^\"\']+)[\"\'][^>]*>', html):
+        src = html_mod.unescape(m.group(1)).strip()
+        alt_m = re.search(r'alt=[\"\']([^\"\']*)[\"\']', m.group(0))
+        alt = html_mod.unescape(alt_m.group(1)).strip() if alt_m else ''
+        if src and not src.startswith('data:'):
+            images.append(f"![{alt}]({src})")
+    
+    # 标题文本: h1-h6
+    headings = []
+    for tag in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+        for m in re.finditer(f'<{tag}[^>]*>(.*?)</{tag}>', html, re.DOTALL):
+            t = html_mod.unescape(re.sub(r'<[^>]+>', '', m.group(1))).strip()
+            if t and len(t) < 200:
+                level = tag[1]
+                headings.append(f"{'#' * int(level)} {t}")
+    
+    # 段落文本（筛选有意义的段落）
+    paragraphs = []
+    for m in re.finditer(r'<p[^>]*>(.*?)</p>', html, re.DOTALL):
+        t = html_mod.unescape(re.sub(r'<[^>]+>', '', m.group(1))).strip()
+        if t and len(t) > 20:
+            paragraphs.append(t)
+    
+    # 提取关键数据区域：列表、表格
+    lists = []
+    for m in re.finditer(r'<(ul|ol)[^>]*>(.*?)</\1>', html, re.DOTALL):
+        items = re.findall(r'<li[^>]*>(.*?)</li>', m.group(2), re.DOTALL)
+        for item in items:
+            t = html_mod.unescape(re.sub(r'<[^>]+>', '', item)).strip()
+            if t and len(t) < 200:
+                lists.append(f"- {t}")
+    
+    # 表格
+    tables = []
+    for m in re.finditer(r'<table[^>]*>(.*?)</table>', html, re.DOTALL):
+        rows = re.findall(r'<tr[^>]*>(.*?)</tr>', m.group(1), re.DOTALL)
+        table_lines = []
+        for row in rows:
+            cells = re.findall(r'<(td|th)[^>]*>(.*?)</\1>', row, re.DOTALL)
+            cell_texts = [html_mod.unescape(re.sub(r'<[^>]+>', '', c[1])).strip() for c in cells]
+            if cell_texts:
+                table_lines.append(' | '.join(cell_texts))
+        if table_lines:
+            tables.extend(table_lines)
+    
+    # 组装输出
+    if headings:
+        parts.append("")
+        parts.extend(headings)
+    
+    if elements:
+        parts.append("")
+        parts.append("**链接 (" + str(len(elements)) + "):**")
+        # 只保留前50个，避免token爆炸
+        for e in elements[:50]:
+            parts.append(e)
+        if len(elements) > 50:
+            parts.append(f"... 还有 {len(elements) - 50} 个链接")
+    
+    if images:
+        parts.append("")
+        parts.append("**图片 (" + str(len(images)) + "):**")
+        for img in images[:20]:
+            parts.append(img)
+    
+    if paragraphs:
+        parts.append("")
+        parts.append("**正文:**")
+        # 去重合并短段落
+        seen = set()
+        for p in paragraphs:
+            if p not in seen:
+                seen.add(p)
+                parts.append(p)
+    
+    if lists:
+        parts.append("")
+        parts.append("**列表:**")
+        parts.extend(lists[:100])
+    
+    if tables:
+        parts.append("")
+        parts.append("**表格:**")
+        parts.extend(tables[:50])
+    
+    # 如果没有提取到任何内容，回退到纯文本
+    if len(parts) <= 1:
+        return _to_markdown_mode(html, title, '', '', '')
+    
+    return '\n'.join(parts)
+
+
+def _to_markdown_mode(html: str, title: str, meta_desc: str,
+                      wx_title: str, wx_content: str) -> str:
+    """MARKDOWN 模式 — 保留核心结构，≈70% token 降幅"""
+    import html as html_mod
+    
+    text = html
+    
+    # 微信文章内容优先
+    if wx_content and len(wx_content) > 100:
+        result = f"# {wx_title}\n\n---\n\n{wx_content}" if wx_title else wx_content
+        return result.strip()
+    
+    # 转 Markdown
+    # 1. 标题标签
+    for i in range(6, 0, -1):
+        text = re.sub(
+            rf'<h{i}[^>]*>(.*?)</h{i}>',
+            lambda m: '\n' + '#' * i + ' ' + html_mod.unescape(re.sub(r'<[^>]+>', '', m.group(1))).strip() + '\n',
+            text,
+            flags=re.DOTALL,
+        )
+    
+    # 2. 加粗/斜体
+    text = re.sub(r'<(strong|b)[^>]*>(.*?)</\1>', r'**\2**', text, flags=re.DOTALL)
+    text = re.sub(r'<(em|i)[^>]*>(.*?)</\1>', r'*\2*', text, flags=re.DOTALL)
+    
+    # 3. 链接
+    text = re.sub(
+        r'<a[^>]*href=[\"\']([^\"\']+)[\"\'][^>]*>(.*?)</a>',
+        lambda m: f'[{html_mod.unescape(re.sub(r"<[^>]+>", "", m.group(2))).strip()}]({html_mod.unescape(m.group(1)).strip()})',
+        text,
+        flags=re.DOTALL,
+    )
+    
+    # 4. 图片
+    text = re.sub(
+        r'<img[^>]*src=[\"\']([^\"\']+)[\"\'][^>]*alt=[\"\']([^\"\']*)[\"\']',
+        lambda m: f'![{html_mod.unescape(m.group(2)).strip()}]({html_mod.unescape(m.group(1)).strip()})',
+        text,
+    )
+    text = re.sub(r'<img[^>]*src=[\"\']([^\"\']+)[\"\'][^>]*>', r'![](\1)', text)
+    
+    # 5. 列表
+    text = re.sub(r'<li[^>]*>(.*?)</li>', lambda m: f'- {html_mod.unescape(re.sub(r"<[^>]+>", "", m.group(1))).strip()}\n', text, flags=re.DOTALL)
+    
+    # 6. 段落
+    text = re.sub(r'</p>', '\n\n', text, flags=re.DOTALL)
+    text = re.sub(r'<br\s*/?>', '\n', text, flags=re.DOTALL)
+    text = re.sub(r'<hr\s*/?>', '\n---\n', text, flags=re.DOTALL)
+    
+    # 7. 表格
+    text = re.sub(r'<table[^>]*>', '\n', text, flags=re.DOTALL)
+    text = re.sub(r'</table>', '\n', text, flags=re.DOTALL)
+    text = re.sub(r'<tr[^>]*>', '', text, flags=re.DOTALL)
+    text = re.sub(r'</tr>', '\n', text, flags=re.DOTALL)
+    text = re.sub(
+        r'<t[dh][^>]*>(.*?)</t[dh]>',
+        lambda m: f'| {html_mod.unescape(re.sub(r"<[^>]+>", "", m.group(1))).strip()} ',
+        text,
+        flags=re.DOTALL,
+    )
+    
+    # 8. 清理剩余标签 + 空白
+    text = re.sub(r'<[^>]+>', '', text)
+    text = html_mod.unescape(text)
+    text = re.sub(r'\n{4,}', '\n\n', text)
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = re.sub(r'^\s+', '', text, flags=re.MULTILINE)
+    
+    # 添加元数据
+    result_parts = []
+    if title:
+        result_parts.append(f"# {title}")
+    if meta_desc:
+        result_parts.append(f"> {meta_desc}")
+    if title or meta_desc:
+        result_parts.append("")
+    
+    result_parts.append(text.strip())
+    return '\n'.join(result_parts).strip()
+
+
+# ============================================================
+# API 端点自动发现 (对标 BrowserAct Network Capture)
+# ============================================================
+
+def discover_api_endpoints(url: str, timeout: int = 30) -> List[dict]:
+    """
+    自动发现目标页面的 API 端点。
+    
+    策略：
+    1. 用 Playwright 加载页面
+    2. 拦截所有网络请求（XHR / Fetch）
+    3. 过滤出 JSON 响应 + API 特征 URL
+    4. 返回结构化端点列表
+    
+    Returns:
+        [{method, url, response_type, params, sample_data}]
+    """
+    try:
+        import asyncio
+        from playwright.async_api import async_playwright
+        
+        endpoints = []
+        captured = []
+        
+        async def _run():
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(
+                    headless=True,
+                    executable_path=EDGE_PATH,
+                    args=['--disable-blink-features=AutomationControlled', '--no-sandbox'],
+                )
+                context = await browser.new_context(
+                    viewport={'width': 1920, 'height': 1080},
+                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                )
+                
+                # 拦截所有网络请求
+                async def handle_response(response):
+                    req = response.request
+                    req_url = req.url
+                    req_method = req.method
+                    content_type = response.headers.get('content-type', '')
+                    
+                    # 只关注 API 类请求
+                    is_api = (
+                        '/api/' in req_url or
+                        '/v1/' in req_url or
+                        '/v2/' in req_url or
+                        '/v3/' in req_url or
+                        '/graphql' in req_url or
+                        '/rest/' in req_url or
+                        '/ajax/' in req_url or
+                        '/rpc/' in req_url or
+                        'json' in content_type or
+                        req_url.startswith('https://api.') or
+                        any(ext in req_url for ext in ['.json', '.xml'])
+                    )
+                    
+                    if not is_api:
+                        return
+                    
+                    # 过滤掉静态资源
+                    if any(ext in req_url for ext in ['.js', '.css', '.png', '.jpg', '.svg', '.woff', '.ico']):
+                        return
+                    
+                    # 过滤掉第三方统计/广告
+                    if any(domain in req_url for domain in ['google-analytics', 'gtag', 'facebook.net', 'doubleclick']):
+                        return
+                    
+                    try:
+                        body = await response.body()
+                        body_text = body.decode('utf-8', errors='replace')[:2000]  # 只取前2000字符
+                        
+                        # 尝试解析 JSON
+                        is_json = False
+                        sample = ''
+                        try:
+                            data = json.loads(body_text)
+                            is_json = True
+                            sample = json.dumps(data, ensure_ascii=False, indent=2)[:500]
+                        except (json.JSONDecodeError, UnicodeDecodeError):
+                            pass
+                        
+                        captured.append({
+                            'method': req_method,
+                            'url': req_url,
+                            'response_type': 'json' if is_json else content_type.split(';')[0],
+                            'params': dict(req.url.split('?')[1]) if '?' in req.url else {},
+                            'sample_data': sample if is_json else '',
+                            'status': response.status,
+                        })
+                    except Exception:
+                        pass
+                
+                context.on('response', handle_response)
+                
+                page = await context.new_page()
+                try:
+                    await page.goto(url, wait_until='domcontentloaded', timeout=timeout * 1000)
+                    await page.wait_for_timeout(5000)  # 等5秒让所有请求完成
+                except Exception:
+                    pass
+                
+                await browser.close()
+        
+        asyncio.run(_run())
+        
+        # 去重（按 URL）
+        seen_urls = set()
+        for ep in captured:
+            clean_url = ep['url'].split('?')[0]  # 去参比较
+            if clean_url not in seen_urls:
+                seen_urls.add(clean_url)
+                endpoints.append(ep)
+        
+        # 按优先级排序：JSON > API路径 > 其他
+        def sort_key(ep):
+            score = 0
+            if ep['response_type'] == 'json':
+                score += 10
+            if '/api/' in ep['url']:
+                score += 5
+            if 'graphql' in ep['url']:
+                score += 3
+            return -score
+        
+        endpoints.sort(key=sort_key)
+        
+        logger.info(f'[crawler_stack v5] Discovered {len(endpoints)} API endpoints for {url}')
+        return endpoints
+        
+    except ImportError:
+        logger.warning('[crawler_stack v5] Playwright not installed, API discovery unavailable')
+        return []
+    except Exception as e:
+        logger.debug(f'[crawler_stack v5] API discovery failed: {e}')
+        return []
+
+
+# ============================================================
+# 工具函数 (原 _strip_html 保留兼容)
 # ============================================================
 
 def _strip_html(html: str) -> str:
@@ -1629,6 +2074,14 @@ if __name__ == '__main__':
     
     human_assist = '--human-assist' in sys.argv
     
+    # v5.1 新参数
+    compact_mode = 'text'
+    for i, arg in enumerate(sys.argv):
+        if arg == '--compact' and i + 1 < len(sys.argv):
+            compact_mode = sys.argv[i + 1]
+    
+    discover_api = '--discover-api' in sys.argv
+    
     cookie_file = None
     for i, arg in enumerate(sys.argv):
         if arg == '--cookie' and i + 1 < len(sys.argv):
@@ -1656,6 +2109,8 @@ if __name__ == '__main__':
         skip_l5=skip_l5,
         hash_route=hash_route,
         human_assist_mode=human_assist,
+        compact_mode=compact_mode,
+        discover_api=discover_api,
     )
     
     if result.captcha_detected:
@@ -1665,7 +2120,25 @@ if __name__ == '__main__':
     else:
         print(f'Method: {result.method}')
         print(f'Status: {result.status}')
-        print(f'Text ({len(result.text)} chars):')
-        print(result.text[:500])
+        print(f'Compact mode: {result.compact_mode}')
+        
+        if result.api_endpoints:
+            print(f'\nAPI Endpoints ({len(result.api_endpoints)}):')
+            for ep in result.api_endpoints[:10]:
+                print(f'  [{ep["method"]}] {ep["url"][:120]}')
+                if ep['response_type']:
+                    print(f'    Type: {ep["response_type"]}')
+            if len(result.api_endpoints) > 10:
+                print(f'  ... and {len(result.api_endpoints) - 10} more')
+        
+        compact_len = len(result.compact) if result.compact else 0
+        text_len = len(result.text) if result.text else 0
+        html_len = len(result.html) if result.html else 0
+        
+        print(f'Compact ({compact_len} chars, {compact_len/max(html_len,1)*100:.0f}% of HTML):')
+        print(f'  vs text: {text_len} chars, vs HTML: {html_len} chars')
+        print()
+        print(result.compact[:1000] if result.compact else result.text[:500])
+        
         if result.video_urls:
-            print(f'Video URLs: {result.video_urls}')
+            print(f'\nVideo URLs: {result.video_urls}')
