@@ -1,15 +1,17 @@
-# 🔥 Crawler Stack — 地表最强八层自动降级爬虫引擎
+# 🔥 Crawler Stack v5 — 地表最强爬虫引擎，正面硬刚 BrowserAct
 
 <div align="center">
 
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Status](https://img.shields.io/badge/status-production--ready-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-5.0.0-brightgreen.svg)
 ![Anti-Detection](https://img.shields.io/badge/anti--detection-C%2B%2B%20source--level-orange.svg)
 ![Cloudflare](https://img.shields.io/badge/Cloudflare-Turnstile%20%2F%20v3%20JS%20VM-purple.svg)
 ![Aegis](https://img.shields.io/badge/%E8%85%BE%E8%AE%AF%E5%A4%A9%E5%BE%A1-Aegis%20%E7%BB%95%E8%BF%87-success.svg)
+![Captcha](https://img.shields.io/badge/captcha-human--assist-red.svg)
+![Multi-Account](https://img.shields.io/badge/multi--account-isolated-blue.svg)
 
-**专为高防站点设计的终极爬虫方案。从最快到最稳，八层自动降级，不拿到内容誓不罢休。**
+**九层自动降级 + 验证码人机接力 + 多账号隔离 + Skill Forge — 你的 AI Agent 值得拥有比 BrowserAct 更强的爬虫能力。**
 
 [English](README_EN.md) · [报告 Bug](https://github.com/xianjianhuang/crawler-stack/issues) · [请求功能](https://github.com/xianjianhuang/crawler-stack/issues)
 
@@ -17,18 +19,14 @@
 
 ---
 
-## 🚀 核心亮点
+## 🚀 v5 四大核弹级升级
 
-| 💥 硬核能力 | 说明 |
-|------------|------|
-| **八层降级** | L0 → L1 → L1.1 → L1.5 → L2 → L2.5 → L3 → L3.5 → L4，层层递进，遇强则强，不拿到内容誓不罢休 |
-| **源码级反检测** | L3.5 CloakBrowser — 58 个 Chromium C++ 源码补丁，直接修改浏览器内核，JS 打补丁的玩具们可以退休了 |
-| **reCAPTCHA v3 得分 0.9** | 人类级别 0.9，不是 0.1 的 bot 分数。Google 自己都分不清你是人是鬼 |
-| **Cloudflare 全系列通杀** | v1/v2/v3 JS VM + Turnstile，管你什么挑战模式，来一个破一个 |
-| **腾讯天御 Aegis 绕过** | 国际最大反爬系统之一，实测正面硬刚通过 |
-| **Edge 用户数据复用** | 直接加载 Chrome/Edge 完整用户数据目录，微信/论坛/各平台登录态全部继承，无需二次认证 |
-| **SPA 单页应用增强** | hash 路由注入、XHR/fetch API 拦截、动态等待渲染，SPA 在你面前就是静态页面 |
-| **CDP 远程调试** | 直接挂载已登录的浏览器窗口，所见即所得，cookie/session 全部白嫖 |
+| 💥 新能力 | 对标 BrowserAct | Crawler Stack 的实现 |
+|-----------|---------------|---------------------|
+| **🔐 验证码人机接力** | `solve-captcha` + `remote-assist` | `detect_captcha()` 自动识别 5 种验证码类型 + `HumanAssistSession` 截图→通知→等待→继续，比 BrowserAct 多支持滑块/图片/短信验证码 |
+| **👥 多账号隔离体系** | 独立 stealth 浏览器 + 独立 IP + 独立指纹 | `Account` 类每个账号独立 DrissionPage 实例 + **稳定指纹噪声**（canvas/WebGL/fonts/audio 用种子哈希生成确定性偏移）+ 独立代理 + 独立 Session，**完全免费无限量** |
+| **⚡ 并发安全** | 零干扰并发 | 默认 `use_fresh_instance=True`，每次创建独立浏览器实例，**彻底消除 session 污染**。旧版全局单例？不存在的 |
+| **🤖 Skill Forge** | 自然语言→自动探测→生成 Skill | `SkillForge` 解析自然语言字段→探测目标网站结构→生成 `ForgedSkill`（含完整 SKILL.md），和我们的「统筹/女娲/达尔文」三位一体理念一脉相承 |
 
 ## 🏗️ 架构总览
 
@@ -38,31 +36,43 @@ fetch(url)
   ├─ L1: ⚡ curl_cffi + Chrome impersonation  → 模拟 TLS/JA3 指纹（<1s 极速）
   ├─ L1.1: 🛡️ cloudscraper v3                → 执行 Cloudflare JS VM + Turnstile（最新 JS 加密挑战）
   ├─ L1.5: 🔑 DrissionPage (用户数据)         — 复用 Edge 真实用户数据（自带微信登录态）
-  ├─ L2: 🕶️ DrissionPage (无头)               — 过 腾讯天御 Aegis（国内最强反爬之一）
+  ├─ L2: 🕶️ DrissionPage (独立实例)           — 过 腾讯天御 Aegis，每次独立实例消除 session 污染
   ├─ L2.5: 🔌 Edge 远程调试 CDP               — 控制已登录的 Edge 浏览器
   ├─ L3: 🎭 Playwright + anti-detection       — JS 层全方位反检测
   ├─ L3.5: 💀 CloakBrowser                    — Chromium 58 个 C++ 源码补丁（终极反检测）
-  └─ L4: 🌀 SPA 渲染增强                      — hash 路由、API 拦截、JS 渲染等待
+  ├─ L4: 🌀 SPA 渲染增强                      — hash 路由、API 拦截、JS 渲染等待
+  └─ L5: 🤖 影刀 RPA                          — 可选层级，通过 FastAPI 调用影刀处理复杂 GUI 流程
+
+新增模块（非层级）：
+  ├─ 👥 Account / AccountManager    — 多账号隔离体系（独立指纹+独立IP+独立Session）
+  ├─ 🔐 HumanAssistSession          — 验证码人机接力（5种验证码识别）
+  ├─ 🤖 SkillForge / ForgedSkill    — 自然语言→爬虫 Skill 自动生成
+  └─ 🕵️ detect_captcha()            — 验证码类型检测引擎
 ```
 
 > **设计哲学**：每一层失败后自动降级到下一层，用最快的方案拿到内容。能 1 秒搞定的绝不等 10 秒，但该上重武器时绝不手软。
 
 ---
 
-## 📊 性能对比（和竞品说拜拜）
+## 📊 竞品对比 — Crawler Stack vs BrowserAct
 
-| 场景 | 普通爬虫 | **Crawler Stack** |
-|------|---------|-------------------|
-| 普通网站 | ✅ 正常 | ✅ **L1 0.3s 秒杀** |
-| Cloudflare v1 挑战 | ❌ 403 回家 | ✅ **L1 0.5s 碾压** |
-| Cloudflare v3 JS VM | ❌ 403 没商量 | ✅ **L1.1 5s 破解** |
-| Cloudflare Turnstile | ❌ 卡死 | ✅ **L1.1 自动过，无需交互** |
-| 腾讯天御 Aegis | ❌ 空 body 怀疑人生 | ✅ **L2 3s 正面突破** |
-| reCAPTCHA v3 | ❌ 0.1 bot 被当机器人 | ✅ **L3.5 0.9 人类认证** |
-| FingerprintJS | ❌ 被拦截封号 | ✅ **L3.5 全通过，指纹归零** |
-| BrowserScan | ❌ 被检测现形 | ✅ **L3.5 NORMAL，完美伪装** |
-| SPA 单页应用 | ❌ 白页啥也没有 | ✅ **L4 渲染完成，源码尽收眼底** |
-| 微信扫码登录页 | ❌ 无法处理 | ✅ **L1.5 复用登录态，无需扫码** |
+| 维度 | **Crawler Stack v5 🚀** | BrowserAct |
+|------|------------------------|------------|
+| **反爬层级** | 九层自动降级（L0→L1→L1.1→L1.5→L2→L2.5→L3→L3.5→L4→L5） | 三模式（chrome / stealth 隐私 / stealth 固定身份） |
+| **验证码处理** | ✅ `detect_captcha` 识别 5 种类型 + `HumanAssistSession` 人机接力 | ✅ `solve-captcha` + `remote-assist` |
+| **多账号隔离** | ✅ `Account` + `AccountManager`，**完全免费无限量** | ⚠️ stealth 浏览器超 5 个需付费 |
+| **并发安全** | ✅ 默认独立实例模式，零污染 | ✅ 零干扰并发 |
+| **Skill Forge** | ✅ `SkillForge` 自然语言→爬虫 Skill | ✅ Skill Forge |
+| **腾讯天御 Aegis** | ✅ **L2 实测通过**（69shuba、mp.weixin.qq.com） | ❌ 未验证 |
+| **CloakBrowser 源码级反检测** | ✅ L3.5 58 个 C++ 补丁 | ✅ 类似方案 |
+| **影刀 RPA** | ✅ L5 可选层级 | ❌ 无 |
+| **Discuz! 论坛爬取** | ✅ 年龄确认自动点击 + 置顶帖过滤 | ❌ 无专门支持 |
+| **费用** | 💯 **完全免费，零限制** | ⚠️ stealth 超 5 个付费，代理付费 |
+| **平台兼容** | Windows 优先 | Windows/macOS/Linux |
+
+**一句话总结：反爬能力不分伯仲，但 Crawler Stack 完全免费无限量，且在国内站点（Aegis/Discuz!/微信）上有独特优势。**
+
+---
 
 ## 🎯 快速开始
 
@@ -83,12 +93,63 @@ pip install cloakbrowser
 ### 一行代码开始爬
 
 ```python
-from crawler_stack_v4 import fetch
+from crawler_stack_v5 import fetch
 
 # 自动降级 — 引擎替你选择最快方案
 result = fetch('https://example.com')
 print(result.text)    # 干净的内容
 print(result.method)  # 实际使用的层级
+```
+
+### 🔐 验证码人机接力
+
+```python
+# 启用验证码检测模式
+result = fetch('https://site-with-captcha.com', human_assist_mode=True)
+
+if result.captcha_detected:
+    print(f"🔐 检测到验证码: {result.method}")
+    print(f"   截图: {result.captcha_screenshot}")
+    # 通知用户手动通过验证码
+    # 用户通过后重新获取
+    result = fetch(url)
+```
+
+### 👥 多账号隔离
+
+```python
+from crawler_stack_v5 import Account, AccountConfig
+
+acct1 = Account(AccountConfig(
+    name='运营号1',
+    proxy='socks5://127.0.0.1:1080',
+    fingerprint_seed='fp-seed-1',
+))
+acct2 = Account(AccountConfig(
+    name='运营号2',
+    proxy='socks5://127.0.0.1:1081',
+    fingerprint_seed='fp-seed-2',
+))
+
+# 两个账号完全隔离，互不干扰
+r1 = acct1.fetch('https://example.com/login')
+r2 = acct2.fetch('https://example.com/login')
+```
+
+### 🤖 Skill Forge — 自然语言→爬虫
+
+```python
+from crawler_stack_v5 import SkillForge
+
+forge = SkillForge()
+skill = forge.create(
+    description="每天抓取小红书AI Agent关键词前20条笔记，含标题、点赞数、作者",
+    site="https://www.xiaohongshu.com",
+    probe=True,
+)
+skill.save()  # 保存为可复用的 Skill
+print(f'生成的 Skill: {skill.name}')
+print(f'数据字段: {skill.data_fields}')
 ```
 
 ### 指定跳过某些层级
@@ -123,7 +184,7 @@ print(result.video_urls)  # 自动拦截 m3u8/mp4 地址
 | 站点 | 防护等级 | 攻破层级 | 耗时 | 备注 |
 |------|---------|---------|------|------|
 | **69shuba.tw** | 🔴 腾讯天御 Aegis + Cloudflare 双重防护 | L2 DrissionPage 正面突破 | ~3s | 国内最硬的反爬组合之一，直接拿下 |
-| **mp.weixin.qq.com** | 🔴 腾讯天御 Aegis 企业级防护 | L2 DrissionPage 轻松绕过 | ~3s | 微信公众平台防护，形同虚设 |
+| **mp.weixin.qq.com** | 🔴 腾讯天御 Aegis 企业级防护 | L1.1 cloudscraper 秒过 | ~2s | 微信公众平台防护，形同虚设 |
 | **色花堂** | 🟠 年龄确认页 + Discuz! 论坛防护 | L2 自动点击确认秒过 | ~5s | 成人站点年龄验证，一键破防 |
 | **browserscan.net** | 🔴 深度浏览器指纹检测（24 项指标） | L3.5 CloakBrowser 满分通过（NORMAL） | ~8s | 指纹检测界的照妖镜，完美伪装 |
 | **deviceandbrowserinfo.com** | 🔴 行为检测 24 项全面扫描 | L3.5 CloakBrowser（0 true flags 满分） | ~8s | 行为检测全部归零，你就是真人 |
@@ -148,7 +209,7 @@ print(result.video_urls)  # 自动拦截 m3u8/mp4 地址
 从 Netscape 格式文件或浏览器扩展导出的 JSON 列表加载 cookie，自动注入到所有后续层级。
 
 ```python
-from crawler_stack_v4 import load_cookie_file, load_cookies_from_list
+from crawler_stack_v5 import load_cookie_file, load_cookies_from_list
 
 # 从 curl -c 导出的文件加载
 load_cookie_file('/path/to/cookies.txt')
@@ -163,13 +224,13 @@ load_cookies_from_list([
 最快的层级。模拟 Chrome 的 TLS/JA3 指纹，通过 `impersonate='chrome131'` 参数一键伪装。适合纯 Cloudflare v1 JS 挑战的站点。
 
 ### L1.1 — cloudscraper v3 JS 挑战破解 🛡️
-内置 JS2Py VM，真正**执行** Cloudflare 的 JavaScript 挑战，而不是假装。支持 v1/v2/v3 JS VM + Turnstile 全部挑战类型。v3.0 版本专为最新 Cloudflare 防护设计。
+内置 JS2Py VM，真正**执行** Cloudflare 的 JavaScript 挑战，而不是假装。支持 v1/v2/v3 JS VM + Turnstile 全部挑战类型。
 
 ### L1.5 — DrissionPage Edge 用户数据复用 🔑
-启动 Edge 浏览器的**真实用户数据目录**，自带所有登录态——微信、各平台、论坛……不需要重复登录。自动检测 SPA 登录页跳转并尝试 hash 路由注入。
+启动 Edge 浏览器的**真实用户数据目录**，自带所有登录态——微信、各平台、论坛……不需要重复登录。
 
-### L2 — DrissionPage 无头模式 🕶️
-**唯一已知能完整绕过腾讯天御 Aegis 的方案**。69shuba、微信公众平台等使用 Aegis 的站点实测通过。内置年龄确认页自动点击（色花堂等成人站点）。
+### L2 — DrissionPage 独立实例 🕶️
+**唯一已知能完整绕过腾讯天御 Aegis 的方案**。69shuba、微信公众平台等使用 Aegis 的站点实测通过。**v5 默认使用独立实例模式**，每次创建新浏览器实例，彻底消除 session 污染。
 
 ### L2.5 — Edge 远程调试 CDP 🔌
 通过 Chrome DevTools Protocol 控制**已经登录的 Edge 浏览器窗口**。自动检测 `localhost:9222` 调试端口，打开新标签页执行 JS，获取 HTML/cookie。
@@ -192,6 +253,80 @@ load_cookies_from_list([
 ### L4 — SPA 渲染增强 🌀
 专门对付单页应用：hash 路由注入、等待指定元素渲染、拦截 XHR/fetch 获取 API 数据、自动提取 m3u8/mp4 视频地址。
 
+### L5 — 影刀 RPA 🤖
+可选层级，通过 FastAPI 调用影刀自动化脚本处理复杂 GUI 流程（表单填写、文件上传、OAuth 扫码等）。
+
+---
+
+## 🆕 v5 新增模块详解
+
+### 🔐 验证码检测 + 人机接力
+
+```python
+from crawler_stack_v5 import detect_captcha, HumanAssistSession, CaptchaType
+
+# 手动检测验证码
+captcha_type = detect_captcha(result.html)
+if captcha_type != CaptchaType.NONE:
+    print(f'检测到验证码: {captcha_type.value}')
+
+# 精细控制人机接力
+session = HumanAssistSession(
+    url='https://example.com',
+    captcha_type=CaptchaType.RECAPTCHA,
+    screenshot_path='/path/to/screenshot.png',
+)
+msg = session.notify_user()  # 生成通知文本
+# 用户手动通过后：
+result = session.continue_fetch(page=some_page_object)
+```
+
+**支持的验证码类型**：
+| 类型 | 检测关键词 | 
+|------|-----------|
+| Google reCAPTCHA | `g-recaptcha`, `recaptcha/api`, `data-sitekey` |
+| Cloudflare Turnstile | `cf-turnstile`, `challenges.cloudflare.com` |
+| 图片验证码 | `captcha-image`, `img_captcha`, `安全验证` |
+| 滑块验证码 | `geetest`, `极验`, `滑块验证`, `nc_scale` |
+| 短信验证码 | `sms-code`, `sms_verify`, `手机验证码输入` |
+
+### 👥 多账号隔离体系
+
+```python
+from crawler_stack_v5 import Account, AccountManager
+
+# 批量管理
+mgr = AccountManager()
+mgr.create_account('bot1', proxy='socks5://127.0.0.1:1080')
+mgr.create_account('bot2', proxy='socks5://127.0.0.1:1081')
+
+results = mgr.batch_fetch([
+    ('https://site.com/page1', 'bot1'),
+    ('https://site.com/page2', 'bot2'),
+])
+mgr.close_all()
+```
+
+每个 Account 的指纹用**种子哈希生成确定性偏移**，同一种子永远产生相同指纹（稳定身份），不同种子产生完全不同指纹（完全隔离）。覆盖 Canvas、WebGL、fonts、audio、plugins、languages 等所有指纹维度。
+
+### 🤖 Skill Forge
+
+```python
+from crawler_stack_v5 import SkillForge
+
+forge = SkillForge()
+skill = forge.create(
+    description="提取商品名称、价格、销量、评论数",
+    site="https://shop.example.com",
+    probe=True,
+)
+skill.save()  # 保存到 forge_skills/ 目录
+print(f'数据字段: {skill.data_fields}')
+print(f'自动探测的选择器: {skill.selectors}')
+```
+
+自动从自然语言中解析数据字段（如"标题、点赞数、作者" → `['title', 'likes', 'author']`），自动探测目标网站的分页模式，生成完整的 SKILL.md 文件。
+
 ---
 
 ## ⚠️ 已知局限（坦诚相告）
@@ -207,7 +342,8 @@ load_cookies_from_list([
 
 ```
 crawler-stack/
-├── crawler_stack_v4.py    # 主引擎（1115+ 行，八层自动降级）
+├── crawler_stack_v5.py    # v5 主引擎（1670+ 行，九层自动降级 + 新模块）
+├── crawler_stack_v4.py    # v4 旧版（保留兼容）
 ├── README.md              # 中文说明（就是本文件）
 ├── README_EN.md           # English version
 ├── LICENSE                # MIT
